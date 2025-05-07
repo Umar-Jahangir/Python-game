@@ -16,6 +16,7 @@ class GameDatabase:
         finally:
             conn.close()
 
+# creates a DB if doesnt exists
     def _initialize_database(self):
         with self._get_cursor() as cursor:
             cursor.execute('''

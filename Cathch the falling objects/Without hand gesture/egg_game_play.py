@@ -73,7 +73,7 @@ class Bird(pygame.sprite.Sprite):
             return True
         return False
 
-# Newton (basket) class
+# (basket) class
 class Newton:
     def __init__(self):
         self.width = newton_img.get_width()
