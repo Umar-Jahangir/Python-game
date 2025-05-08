@@ -3,6 +3,8 @@ import sys
 import random
 import time
 import math 
+import cv2
+import mediapipe as mp
 from pygame.locals import *
 from database import GameDatabase
 
@@ -53,7 +55,7 @@ background_img = pygame.transform.scale(background_img, (WINDOW_WIDTH, WINDOW_HE
 
 # Set up display
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption('Catch the Falling Apples!')
+pygame.display.set_caption('Catch the Falling Apples! - Hand Gesture Control')
 clock = pygame.time.Clock()
 
 # Font
@@ -62,6 +64,17 @@ font = pygame.font.SysFont('Arial', 24)
 # High score DB
 db = GameDatabase()
 GAME_NAME = "apple_game"
+
+# Initialize MediaPipe Hands
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.5)
+
+# Initialize webcam
+cap = cv2.VideoCapture(0)
 
 class Newton:
     def __init__(self):
@@ -81,7 +94,7 @@ class Newton:
         window.blit(newton_img, (self.x, self.y))
 
 class FallingApple:
-    def __init__(self):  # Fixed: double underscores
+    def __init__(self):
         self.x = random.randint(0, WINDOW_WIDTH - apple_img.get_width())
         self.y = 200
         self.speed = random.uniform(APPLE_SPEED_MIN, APPLE_SPEED_MAX)
@@ -99,70 +112,53 @@ class FallingApple:
             window.blit(apple_img, (self.x, self.y))
 
 class Leaf:
-    def __init__(self):  # Fixed: double underscores
+    def __init__(self):
         self.size = random.randint(5, 15)
-        # Position leaves at treetop level (about 1/4 from the top of the screen)
         self.x = random.randint(0, WINDOW_WIDTH)
-        self.y = random.randint(50, 150)  # Tree level height
+        self.y = random.randint(50, 150)
         self.speed_y = random.uniform(0.8, 2.5)
         self.speed_x = random.uniform(-1, 1)
         self.rotation = random.randint(0, 360)
         self.rotation_speed = random.uniform(-2, 2)
         self.color = random.choice(LEAF_COLORS)
-        self.swaying = random.uniform(0, 6.28)  # Random starting point in the sine wave (0 to 2π)
+        self.swaying = random.uniform(0, 6.28)
         self.sway_speed = random.uniform(0.01, 0.05)
         self.sway_amount = random.uniform(0.5, 2)
     
     def update(self):
-        # Fall downward
         self.y += self.speed_y
-        
-        # Add swaying motion
         self.swaying += self.sway_speed
         self.x += math.sin(self.swaying) * self.sway_amount + self.speed_x
-        
-        # Rotate the leaf
         self.rotation += self.rotation_speed
         
-        # Reset if off screen
         if self.y > WINDOW_HEIGHT or self.x < -20 or self.x > WINDOW_WIDTH + 20:
             self.reset()
     
     def reset(self):
         self.x = random.randint(0, WINDOW_WIDTH)
-        self.y = random.randint(50, 150)  # Reset to tree level
+        self.y = random.randint(50, 150)
         self.speed_y = random.uniform(0.8, 2.5)
     
     def draw(self):
-        # Create a simple leaf shape using a polygon
         points = []
         center_x = self.x
         center_y = self.y
-        
-        # Create a leaf shape
         angle_rad = math.radians(self.rotation)
         
-        # Basic leaf shape as a polygon
         base_shape = [
-            (0, -self.size),          # Top point
-            (self.size/2, 0),         # Right middle
-            (0, self.size),           # Bottom point
-            (-self.size/2, 0)         # Left middle
+            (0, -self.size),
+            (self.size/2, 0),
+            (0, self.size),
+            (-self.size/2, 0)
         ]
         
-        # Rotate and position the points
         for point in base_shape:
             x, y = point
-            # Rotate
             rotated_x = x * math.cos(angle_rad) - y * math.sin(angle_rad)
             rotated_y = x * math.sin(angle_rad) + y * math.cos(angle_rad)
-            # Position
             points.append((center_x + rotated_x, center_y + rotated_y))
         
-        # Draw the leaf
         pygame.draw.polygon(window, self.color, points)
-        
-        # Draw a simple stem/vein
         stem_end_x = center_x + math.sin(angle_rad) * self.size/2
         stem_end_y = center_y - math.cos(angle_rad) * self.size/2
         pygame.draw.line(window, (0, 0, 0), (center_x, center_y), 
@@ -203,17 +199,32 @@ def game_over_screen(score, high_score):
                     sys.exit()
         clock.tick(FPS)
 
-def main():
-    # Add missing import for math module
-    import math
+def detect_gesture():
+    ret, frame = cap.read()
+    if not ret:
+        return None
     
+    frame = cv2.flip(frame, 1)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(rgb_frame)
+    
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            thumb_tip = hand_landmarks.landmark[4]
+            thumb_ip = hand_landmarks.landmark[3]
+            
+            if thumb_tip.y < thumb_ip.y:
+                return 'left'
+            elif thumb_tip.y > thumb_ip.y:
+                return 'right'
+    
+    return 'stop'
+
+def main():
     while True:
         newton = Newton()
         apples = []
-        
-        # Create leaves
         leaves = [Leaf() for _ in range(LEAF_COUNT)]
-        
         last_apple_time = time.time()
         score = 0
         lives = LIVES
@@ -223,16 +234,19 @@ def main():
         while game_running:
             for event in pygame.event.get():
                 if event.type == QUIT:
+                    cap.release()
                     pygame.quit()
                     sys.exit()
                 if event.type == KEYDOWN and event.key == K_ESCAPE:
+                    cap.release()
                     pygame.quit()
                     sys.exit()
 
-            keys = pygame.key.get_pressed()
-            if keys[K_LEFT]:
+            # Detect hand gesture
+            gesture = detect_gesture()
+            if gesture == 'left':
                 newton.move('left')
-            if keys[K_RIGHT]:
+            elif gesture == 'right':
                 newton.move('right')
 
             current_time = time.time()
@@ -240,7 +254,6 @@ def main():
                 apples.append(FallingApple())
                 last_apple_time = current_time
 
-            # Update leaves
             for leaf in leaves:
                 leaf.update()
 
@@ -255,6 +268,7 @@ def main():
                             db.set_high_score(GAME_NAME, score)
                             high_score = score
                         if not game_over_screen(score, high_score):
+                            cap.release()
                             pygame.quit()
                             sys.exit()
                         game_running = False
@@ -271,11 +285,8 @@ def main():
                     apples.remove(apple)
 
             window.blit(background_img, (0, 0))
-            
-            # Draw leaves
             for leaf in leaves:
                 leaf.draw()
-                
             newton.draw()
             for apple in apples:
                 apple.draw()
