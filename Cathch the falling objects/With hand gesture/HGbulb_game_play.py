@@ -2,6 +2,8 @@ import pygame
 import sys
 import random
 import time
+import cv2
+import mediapipe as mp
 from pygame.locals import *
 from database import GameDatabase
 
@@ -41,7 +43,7 @@ background_img = pygame.transform.scale(background_img, (WINDOW_WIDTH, WINDOW_HE
 
 # Set up the display
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption('Catch the Falling Bulbs!')
+pygame.display.set_caption('Catch the Falling Bulbs! - Hand Gesture Control')
 clock = pygame.time.Clock()
 
 # Font for text
@@ -50,6 +52,17 @@ font = pygame.font.SysFont('Arial', 24)
 # High score DB
 db = GameDatabase()
 GAME_NAME = "bulb_game"
+
+# Initialize MediaPipe Hands
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.5)
+
+# Initialize webcam
+cap = cv2.VideoCapture(0)
 
 class Newton:
     def __init__(self):
@@ -132,6 +145,38 @@ def game_over_screen(score, high_score):
         clock.tick(FPS)
     return False
 
+def detect_gesture():
+    ret, frame = cap.read()
+    if not ret:
+        return None
+    
+    # Flip the frame horizontally for a later selfie-view display
+    frame = cv2.flip(frame, 1)
+    
+    # Convert the BGR image to RGB
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    
+    # Process the frame with MediaPipe Hands
+    results = hands.process(rgb_frame)
+    
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            # Get thumb tip (landmark 4) and thumb IP joint (landmark 3)
+            thumb_tip = hand_landmarks.landmark[4]
+            thumb_ip = hand_landmarks.landmark[3]
+            
+            # Get index finger tip (landmark 8)
+            index_tip = hand_landmarks.landmark[8]
+            
+            # Check if thumb is up (thumb tip y-coordinate is above thumb IP joint)
+            if thumb_tip.y < thumb_ip.y:
+                return 'left'
+            # Check if thumb is down (thumb tip y-coordinate is below thumb IP joint)
+            elif thumb_tip.y > thumb_ip.y:
+                return 'right'
+    
+    return None
+
 def main():
     while True:
         newton = Newton()
@@ -145,16 +190,19 @@ def main():
         while game_running:
             for event in pygame.event.get():
                 if event.type == QUIT:
+                    cap.release()
                     pygame.quit()
                     sys.exit()
                 if event.type == KEYDOWN and event.key == K_ESCAPE:
+                    cap.release()
                     pygame.quit()
                     sys.exit()
 
-            keys = pygame.key.get_pressed()
-            if keys[K_LEFT]:
+            # Detect hand gesture
+            gesture = detect_gesture()
+            if gesture == 'left':
                 newton.move('left')
-            if keys[K_RIGHT]:
+            elif gesture == 'right':
                 newton.move('right')
 
             current_time = time.time()
@@ -173,6 +221,7 @@ def main():
                             db.set_high_score(GAME_NAME, score)
                             high_score = score
                         if not game_over_screen(score, high_score):
+                            cap.release()
                             pygame.quit()
                             sys.exit()
                         game_running = False
