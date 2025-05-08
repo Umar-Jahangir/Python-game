@@ -165,9 +165,6 @@ def detect_gesture():
             thumb_tip = hand_landmarks.landmark[4]
             thumb_ip = hand_landmarks.landmark[3]
             
-            # Get index finger tip (landmark 8)
-            index_tip = hand_landmarks.landmark[8]
-            
             # Check if thumb is up (thumb tip y-coordinate is above thumb IP joint)
             if thumb_tip.y < thumb_ip.y:
                 return 'left'
@@ -175,7 +172,8 @@ def detect_gesture():
             elif thumb_tip.y > thumb_ip.y:
                 return 'right'
     
-    return None
+    # Return 'stop' if no recognized gesture is detected
+    return 'stop'
 
 def main():
     while True:
@@ -204,6 +202,7 @@ def main():
                 newton.move('left')
             elif gesture == 'right':
                 newton.move('right')
+            # No movement for 'stop' or any other gesture
 
             current_time = time.time()
             if current_time - last_bulb_time > APPLE_FREQUENCY:
