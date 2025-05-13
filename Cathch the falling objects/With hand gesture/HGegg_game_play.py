@@ -2,6 +2,8 @@ import pygame
 import sys
 import random
 import time
+import cv2
+import mediapipe as mp
 from pygame.locals import *
 from database import GameDatabase
 
@@ -27,21 +29,61 @@ SCORE_PER_CATCH = 10
 # Load images
 basket_images = {
     0: pygame.transform.scale(pygame.image.load('assets/basket.png'), (100, 100)),
-    1: pygame.transform.scale(pygame.image.load('assets/eggInsideBasket/basket1egg.png'), (100, 100)),
-    2: pygame.transform.scale(pygame.image.load('assets/eggInsideBasket/basket2egg.png'), (100, 100)),
-    3: pygame.transform.scale(pygame.image.load('assets/eggInsideBasket/basket3egg.png'), (100, 100)),
-    4: pygame.transform.scale(pygame.image.load('assets/eggInsideBasket/basket4egg.png'), (100, 100))
+    1: pygame.transform.scale(pygame.image.load('assets/eggInsidebasket/basket1egg.png'), (100, 100)),
+    2: pygame.transform.scale(pygame.image.load('assets/eggInsidebasket/basket2egg.png'), (100, 100)),
+    3: pygame.transform.scale(pygame.image.load('assets/eggInsidebasket/basket3egg.png'), (100, 100)),
+    4: pygame.transform.scale(pygame.image.load('assets/eggInsidebasket/basket4egg.png'), (100, 100))
 }
 apple_img = pygame.transform.scale(pygame.image.load('assets/egg.png'), (40, 40))
 background_img = pygame.transform.scale(pygame.image.load('assets/sky_lawn.jpeg'), (WINDOW_WIDTH, WINDOW_HEIGHT))
 
 # Display setup
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption('Catch the Falling Eggs!')
+pygame.display.set_caption('Catch the Falling Eggs with Hand Gestures!')
 clock = pygame.time.Clock()
 
 # Font setup
 font = pygame.font.SysFont('Arial', 24)
+
+# Initialize MediaPipe Hands
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.5)
+mp_drawing = mp.solutions.drawing_utils
+
+# Initialize webcam
+cap = cv2.VideoCapture(0)
+
+def detect_gesture():
+    ret, frame = cap.read()
+    if not ret:
+        return "none"
+    
+    # Flip the frame horizontally for a later selfie-view display
+    frame = cv2.flip(frame, 1)
+    
+    # Convert the BGR image to RGB
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    
+    # Process the frame with MediaPipe Hands
+    results = hands.process(rgb_frame)
+    
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            # Get landmarks for thumb and index finger
+            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            
+            # Check if thumb is to the left or right of index finger
+            if thumb_tip.x < index_tip.x - 0.1:  # Thumb is to the left
+                return "left"
+            elif thumb_tip.x > index_tip.x + 0.1:  # Thumb is to the right
+                return "right"
+    
+    return "none"
 
 # Bird animation class
 class Bird(pygame.sprite.Sprite):
@@ -188,14 +230,17 @@ def main():
         while game_running:
             for event in pygame.event.get():
                 if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                    cap.release()
                     pygame.quit()
                     sys.exit()
 
-            keys = pygame.key.get_pressed()
-            if keys[K_LEFT]:
+            # Detect hand gesture
+            gesture = detect_gesture()
+            if gesture == "left":
                 newton.move('left')
-            if keys[K_RIGHT]:
+            elif gesture == "right":
                 newton.move('right')
+            # For "none" gesture, the basket doesn't move
 
             for bird in birds:
                 if bird.can_drop_egg() and 0 < bird.rect.x < WINDOW_WIDTH:
@@ -213,9 +258,8 @@ def main():
                         if score > high_score:
                             db.set_high_score("egg_game", score)
                             high_score = score
-                        if score > high_score:
-                            db.set_high_score("egg_game", score)
                         if not game_over_screen(score):
+                            cap.release()
                             pygame.quit()
                             sys.exit()
                         game_running = False
@@ -247,3 +291,4 @@ def main():
 # Run game
 if __name__ == "__main__":
     main()
+    cap.release()
