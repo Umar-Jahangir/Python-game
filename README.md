@@ -6,4 +6,6 @@ git clone https://github.com/Umar-Jahangir/Python-game.git
 
 cd "path\to\Cathch the falling objects"
 
+python -m venv venv
 
+.\venv\Scripts\activate
