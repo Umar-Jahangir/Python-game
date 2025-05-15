@@ -25,8 +25,6 @@ LIGHT_BLUE = (100, 180, 255)
 GRAY = (100, 100, 100)
 ORANGE = (255, 165, 0)
 LIGHT_ORANGE = (255, 200, 100)
-DOLPHIN_BLUE = (0, 120, 215)
-LIGHT_DOLPHIN_BLUE = (100, 180, 255)
 GOLD = (238, 213, 120)  # Gold background color for mode selection
 TURQUOISE = (64, 224, 208)  # Turquoise color for mode buttons
 LIGHT_TURQUOISE = (95, 255, 239)  # Light turquoise for button hover
@@ -53,17 +51,13 @@ try:
     if not os.path.exists("assets"):
         os.makedirs("assets")
 
-    for game, color in [("egg", (255, 220, 180)), ("newton", (255, 0, 0)), ("einstein", (220, 220, 220)), ("dolphin", DOLPHIN_BLUE)]:
+    for game, color in [("egg", (255, 220, 180)), ("newton", (255, 0, 0)), ("einstein", (220, 220, 220))]:
         if not os.path.exists(f"assets/{game}_icon.png"):
             icon_surface = pygame.Surface((120, 120), pygame.SRCALPHA)
             if game == "egg":
                 pygame.draw.ellipse(icon_surface, color, (10, 10, 100, 100))
             elif game == "newton":
                 pygame.draw.circle(icon_surface, color, (60, 60), 50)
-                pygame.draw.rect(icon_surface, (100, 70, 0), (55, 10, 10, 20))
-            elif game == "dolphin":
-                pygame.draw.circle(icon_surface, color, (60, 60), 50)
-                # Add simple dolphin silhouette
                 pygame.draw.rect(icon_surface, (100, 70, 0), (55, 10, 10, 20))
             else:
                 pygame.draw.rect(icon_surface, color, (10, 10, 100, 100))
@@ -72,10 +66,6 @@ try:
                 icon_surface.blit(text, (20, 40))
             pygame.image.save(icon_surface, f"assets/{game}_icon.png")
 
-    # Try to load custom dolphin logo if it exists
-    if os.path.exists("assets/dolphin_logo.png"):
-        os.rename("assets/dolphin_icon.png", "assets/dolphin_icon_backup.png")
-        os.rename("assets/dolphin_logo.png", "assets/dolphin_icon.png")
 
     def load_and_scale_icon(filename, target_size=(80, 80)):
         icon = pygame.image.load(f"assets/{filename}").convert_alpha()
@@ -84,11 +74,10 @@ try:
     egg_icon = load_and_scale_icon("egg_icon.png")
     newton_icon = load_and_scale_icon("newton_icon.png")
     einstein_icon = load_and_scale_icon("einstein_icon.png")
-    dolphin_icon = load_and_scale_icon("dolphin_icon.png")
-
+   
 except Exception as e:
     print(f"Error loading/creating icons: {e}")
-    egg_icon = newton_icon = einstein_icon = dolphin_icon = None
+    egg_icon = newton_icon = einstein_icon = None
 
 def draw_text(text, font, color, x, y, align="center", max_width=None):
     if max_width is None:
@@ -219,7 +208,6 @@ def select_game_screen():
     egg_center = (center_x, top_y)
     newton_center = (center_x - side_gap, middle_y)
     einstein_center = (center_x + side_gap, middle_y)
-    dolphin_center = (center_x, bottom_y)
 
     mouse_pos = pygame.mouse.get_pos()
 
@@ -253,15 +241,6 @@ def select_game_screen():
     pygame.draw.circle(screen, WHITE, einstein_center, circle_radius, 2)
     # draw_text("Einstein's Puzzle", button_font, WHITE, einstein_center[0], einstein_center[1] + circle_radius + 20)
 
-    # Dolphin Game with hover effect
-    dolphin_hover = pygame.Rect(dolphin_center[0] - circle_radius, dolphin_center[1] - circle_radius,
-                               circle_radius*2, circle_radius*2).collidepoint(mouse_pos)
-    dolphin_color = LIGHT_DOLPHIN_BLUE if dolphin_hover else DOLPHIN_BLUE
-    pygame.draw.circle(screen, dolphin_color, dolphin_center, circle_radius)
-    if dolphin_icon:
-        screen.blit(dolphin_icon, (dolphin_center[0] - icon_size//2, dolphin_center[1] - icon_size//2))
-    pygame.draw.circle(screen, WHITE, dolphin_center, circle_radius, 2)
-    # draw_text("Dolphin Game", button_font, WHITE, dolphin_center[0], dolphin_center[1] + circle_radius + 20)
 
     click_area_size = circle_radius * 2
     return {
@@ -269,7 +248,6 @@ def select_game_screen():
         "egg": pygame.Rect(egg_center[0] - circle_radius, egg_center[1] - circle_radius, click_area_size, click_area_size),
         "newton": pygame.Rect(newton_center[0] - circle_radius, newton_center[1] - circle_radius, click_area_size, click_area_size),
         "einstein": pygame.Rect(einstein_center[0] - circle_radius, einstein_center[1] - circle_radius, click_area_size, click_area_size),
-        "dolphin": pygame.Rect(dolphin_center[0] - circle_radius, dolphin_center[1] - circle_radius, click_area_size, click_area_size)
     }
 
 def instructions_screen():
@@ -295,16 +273,6 @@ def instructions_screen():
     screen.set_clip(scroll_area)
     
     instructions = [
-        "Dolphins Ocean!",
-        "Dive into the ocean adventure where you control a cheerful dolphin on a mission to catch colorful falling balls! Test your reflexes, time your jumps, and rack up the highest score in this fun, fast-paced game!",
-        "",
-        "Your Mission:",
-        "Help the dolphin catch as many falling balls as possible before they hit the water. Every ball you catch boosts your score and keeps the game going!",
-        "Move Left: ← Arrow Key",
-        "Move Right: → Arrow Key",
-        "Jump: ↑↑ Double Arrow Key",
-        "Swim Down: ↓ Arrow Key",
-        " ",
         "Newton's Apple Garden",
         "Objective: Help Newton, a small apple, bounce up and reach different platforms. Avoid falling and catch apples to score points.",
         "Keep Newton from falling off the screen, land on platforms, and catch apples to score points.",
@@ -420,6 +388,7 @@ def launch_game(game_file):
 def main():
     global current_screen, instruction_scroll_y
     running = True
+    current_mode = "normal"  # Track the current mode ("normal" or "hand_gesture")
     
     # For mouse wheel scrolling
     scroll_speed = 20
@@ -464,38 +433,45 @@ def main():
             elements = home_screen()
             if mouse_click:
                 if elements["play"].collidepoint(mouse_click):
-                    current_screen = "mode_selection"  # Changed to go to mode selection first
+                    current_screen = "mode_selection"
                 elif elements["settings"].collidepoint(mouse_click):
                     current_screen = "settings"
                 elif elements["instructions"].collidepoint(mouse_click):
                     current_screen = "instructions"
-                    instruction_scroll_y = 0  # Reset scroll position when entering instructions
+                    instruction_scroll_y = 0
                 elif elements["quit"].collidepoint(mouse_click):
                     running = False
         elif current_screen == "mode_selection":
             elements = mode_selection_screen()
             if mouse_click:
                 if elements["normal"].collidepoint(mouse_click):
-                    current_screen = "select"  # Normal mode goes to game selection
+                    current_mode = "normal"
+                    current_screen = "select"
                 elif elements["hand_gesture"].collidepoint(mouse_click):
-                    # Here you would implement hand gesture mode functionality
-                    # For now, we'll just print a message
-                    print("Hand gesture mode selected - functionality not implemented")
+                    current_mode = "hand_gesture"
+                    current_screen = "select"
                 elif elements["back"].collidepoint(mouse_click):
                     current_screen = "home"
         elif current_screen == "select":
             elements = select_game_screen()
             if mouse_click:
                 if elements["back"].collidepoint(mouse_click):
-                    current_screen = "mode_selection"  # Go back to mode selection instead of home
+                    current_screen = "mode_selection"
                 elif elements["egg"].collidepoint(mouse_click):
-                    launch_game("egg_game_play.py")
+                    if current_mode == "hand_gesture":
+                        launch_game("With hand gesture/HGegg_game_play.py")
+                    else:
+                        launch_game("Without hand gesture/egg_game_play.py")
                 elif elements["newton"].collidepoint(mouse_click):
-                    launch_game("apple_game_play.py")
+                    if current_mode == "hand_gesture":
+                        launch_game("With hand gesture/HGapple_game_play.py")
+                    else:
+                        launch_game("Without hand gesture/apple_game_play.py")
                 elif elements["einstein"].collidepoint(mouse_click):
-                    launch_game("bulb_game_play.py")
-                elif elements["dolphin"].collidepoint(mouse_click):
-                    launch_game("dolphin_game_play.py")
+                    if current_mode == "hand_gesture":
+                        launch_game("With hand gesture/HGbulb_game_play.py")
+                    else:
+                        launch_game("Without hand gesture/bulb_game_play.py")
         elif current_screen == "instructions":
             elements = instructions_screen()
             if mouse_click:
@@ -505,9 +481,7 @@ def main():
                     instruction_scroll_y = max(0, instruction_scroll_y - scroll_speed * 2)
                 elif elements["scroll_down"].collidepoint(mouse_click):
                     instruction_scroll_y = min(max_scroll_y, instruction_scroll_y + scroll_speed * 2)
-                # Check if clicked on scroll bar area for direct scrolling
                 elif pygame.Rect(elements["scroll_area"].right + 10, elements["scroll_area"].top, 10, elements["scroll_area"].height).collidepoint(mouse_click):
-                    # Calculate position based on click
                     click_ratio = (mouse_click[1] - elements["scroll_area"].top) / elements["scroll_area"].height
                     instruction_scroll_y = min(max_scroll_y, max(0, int(max_scroll_y * click_ratio)))
         elif current_screen == "settings":
