@@ -2,41 +2,44 @@
 
 git clone https://github.com/Umar-Jahangir/Python-game.git
 
-##Catch the falling objects
+# Catch the Falling Objects Game 🎮
 
-cd "path\to\Cathch the falling objects"
+A collection of fun physics-based games with both normal (keyboard) and hand gesture control modes.
 
+![Game Screenshot](assets/game_screenshot.png) <!-- Add a screenshot if available -->
+
+## Features ✨
+- Three unique physics-based games
+- Two control modes: Keyboard & Hand Gesture
+- Score tracking and database storage
+- Interactive menu system
+- Particle effects and smooth animations
+
+## Games Included 🕹️
+1. **Egg Catcher** - Catch falling eggs with a basket
+2. **Newton's Lab** - Bounce apples on platforms
+3. **Einstein's Puzzle** - Catch falling light bulbs
+
+## Installation ⚙️
+
+### Prerequisites
+- Python 3.6 or higher
+- Webcam (for hand gesture mode)
+
+### Setup
+```bash
+# Clone the repository
+git clone https://github.com/Umar-Jahangir/Python-game.git
+
+# Navigate to project directory
+cd "Python-game/Catch the falling objects"
+
+# Create virtual environment
 python -m venv venv
 
+# Activate environment (Windows)
 .\venv\Scripts\activate
 
-pip install pygame
+# Install dependencies
+pip install -r requirements.txt  # Create this file with the packages below
 
-pip install opencv-python
-
-pip install numpy
-
-pip install mediapipe
-
-python gama.py
-
-Optional Dependencies:
-  pip install pillow
-  pip install matplotlib
-
-Catch the falling objects/
-├── __pycache__/
-├── venv/
-├── gama.py(dashboard)
-├── assets/
-├── With hand gesture/
-│   ├── HGapple_game_play.py
-│   ├── HGbulb_game_play.py
-│   ├── HGegg_game_play.py
-│   ├── assets/
-│   └── database.py
-└── Without hand gesture/
-    ├── assets/
-    ├── apple_game_play.py
-    ├── bulb_game_play.py
-    └── egg_game_play.py
