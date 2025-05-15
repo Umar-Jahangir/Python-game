@@ -18,6 +18,8 @@ pip install numpy
 
 pip install mediapipe
 
+python gama.py
+
 Optional Dependencies:
   pip install pillow
   pip install matplotlib
