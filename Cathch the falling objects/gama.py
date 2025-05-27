@@ -275,7 +275,7 @@ def instructions_screen():
     screen.set_clip(scroll_area)
     
     instructions = [
-        ("Newton's Apple Garden", True),  # (text, is_title)
+        ("Newton's Apple Garden", True),  
         ("Objective: Help Newton, a small apple, bounce up and reach different platforms. Avoid falling and catch apples to score points.", False),
         ("Keep Newton from falling off the screen, land on platforms, and catch apples to score points.", False),
         ("Use the Left Arrow key to move Newton left.", False),
