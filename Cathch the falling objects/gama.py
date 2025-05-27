@@ -34,7 +34,7 @@ current_screen = "home"
 
 # Scrolling variables for instructions
 instruction_scroll_y = 0
-max_scroll_y = 0  # Will be calculated based on content
+max_scroll_y = 0  
 
 # Particles
 particles = []
@@ -275,7 +275,7 @@ def instructions_screen():
     screen.set_clip(scroll_area)
     
     instructions = [
-        ("Newton's Apple Garden", True),  
+        ("Newton's Apple Garden", True),  # (text, is_title)
         ("Objective: Help Newton, a small apple, bounce up and reach different platforms. Avoid falling and catch apples to score points.", False),
         ("Keep Newton from falling off the screen, land on platforms, and catch apples to score points.", False),
         ("Use the Left Arrow key to move Newton left.", False),
