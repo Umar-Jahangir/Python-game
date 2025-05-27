@@ -85,7 +85,7 @@ def draw_text(text, font, color, x, y, align="center", max_width=None):
         if align == "center":
             text_rect = text_surface.get_rect(center=(x, y))
         elif align == "left":
-            text_rect = text_surface.get_rect(midleft=(x, y))
+            text_rect = text_surface.get_rect(topleft=(x, y))
         screen.blit(text_surface, text_rect)
         return text_rect
     else:
@@ -112,16 +112,17 @@ def draw_text(text, font, color, x, y, align="center", max_width=None):
             lines.append(' '.join(current_line))
         
         # Render each line
-        rendered_height = 0
+        line_height = font.get_height()
+        rendered_height = len(lines) * line_height
         rendered_rects = []
+        
         for i, line in enumerate(lines):
             text_surface = font.render(line, True, color)
             if align == "center":
-                text_rect = text_surface.get_rect(center=(x, y + i * font.get_height()))
+                text_rect = text_surface.get_rect(center=(x, y + i * line_height))
             elif align == "left":
-                text_rect = text_surface.get_rect(midleft=(x, y + i * font.get_height()))
+                text_rect = text_surface.get_rect(topleft=(x, y + i * line_height))
             
-            rendered_height += font.get_height()
             rendered_rects.append((text_surface, text_rect))
         
         return rendered_rects, rendered_height
@@ -158,13 +159,14 @@ def home_screen():
     draw_text("CATCH THE FALLING OBJECT", title_font, GRAY, 400, 102)
     draw_text("CATCH THE FALLING OBJECT", title_font, WHITE, 398, 100)
     draw_text("Select an option to begin", option_font, GRAY, 400, 170)
-    play_btn = create_button("PLAY GAMES", 250, 250, 300, 60)
-    settings_btn = create_button("SETTINGS", 250, 330, 300, 60)
-    instructions_btn = create_button("INSTRUCTIONS", 250, 410, 300, 60)
-    quit_btn = create_button("QUIT", 250, 490, 300, 60)
+    
+    # Adjusted button positions to center them better without the settings button
+    play_btn = create_button("PLAY GAMES", 250, 280, 300, 60)
+    instructions_btn = create_button("INSTRUCTIONS", 250, 360, 300, 60)
+    quit_btn = create_button("QUIT", 250, 440, 300, 60)
+    
     return {
         "play": play_btn,
-        "settings": settings_btn,
         "instructions": instructions_btn,
         "quit": quit_btn
     }
@@ -273,63 +275,74 @@ def instructions_screen():
     screen.set_clip(scroll_area)
     
     instructions = [
-        "Newton's Apple Garden",
-        "Objective: Help Newton, a small apple, bounce up and reach different platforms. Avoid falling and catch apples to score points.",
-        "Keep Newton from falling off the screen, land on platforms, and catch apples to score points.",
-        "Use the Left Arrow key to move Newton left.",
-        "Use the Right Arrow key to move Newton right.",
-        " ",
-        "Einstein Lab",
-        "The main goal of the game is to help Einstein catch light bulbs falling from the top of the screen. Each light bulb caught gives you points.",
-        "Use the Left Arrow key to move Einstein left.",
-        "Use the Right Arrow key to move Einstein right.",
-        " ",
-        "Birds Open Home",
-        "The goal of the game is to catch falling eggs with the basket. Each egg you catch gives you points.",
-        "Use the Left Arrow key to move the basket left.",
-        "Use the Right Arrow key to move the basket right.",
-        " ",
-        "Game Controls:",
-        "- Arrow keys for movement",
-        "- Spacebar for actions",
-        "- ESC to pause/quit"
+        ("Newton's Apple Garden", True),  # (text, is_title)
+        ("Objective: Help Newton, a small apple, bounce up and reach different platforms. Avoid falling and catch apples to score points.", False),
+        ("Keep Newton from falling off the screen, land on platforms, and catch apples to score points.", False),
+        ("Use the Left Arrow key to move Newton left.", False),
+        ("Use the Right Arrow key to move Newton right.", False),
+        ("", False),  # Empty line
+        ("Einstein Lab", True),
+        ("The main goal of the game is to help Einstein catch light bulbs falling from the top of the screen. Each light bulb caught gives you points.", False),
+        ("Use the Left Arrow key to move Einstein left.", False),
+        ("Use the Right Arrow key to move Einstein right.", False),
+        ("", False),  # Empty line
+        ("Birds Open Home", True),
+        ("The goal of the game is to catch falling eggs with the basket. Each egg you catch gives you points.", False),
+        ("Use the Left Arrow key to move the basket left.", False),
+        ("Use the Right Arrow key to move the basket right.", False),
+        ("", False),  # Empty line
+        ("Game Controls:", True),
+        ("- Arrow keys for movement", False),
+        ("- Spacebar for actions", False),
+        ("- ESC to pause/quit", False)
     ]
     
-    # Calculate total height of all text
+    # Calculate total height and render text
     total_height = 0
-    rendered_lines = []
+    rendered_content = []
+    line_spacing = 8  # Space between lines
+    section_spacing = 20  # Extra space between sections
     
-    for line in instructions:
-        if line.strip():  # Skip empty lines for height calculation
-            result, line_height = draw_text(line, instruction_font, WHITE, 
+    for text, is_title in instructions:
+        if not text.strip():  # Empty line
+            rendered_content.append((None, None, section_spacing))
+            total_height += section_spacing
+        else:
+            # Choose font based on whether it's a title
+            current_font = button_font if is_title else instruction_font
+            color = LIGHT_BLUE if is_title else WHITE
+            
+            # Calculate wrapped text
+            result, line_height = draw_text(text, current_font, color, 
                                            scroll_area.left + 20, 0, 
                                            align="left", max_width=scroll_area.width - 40)
-            rendered_lines.append((line, result, line_height))
-            total_height += line_height + 10  # Add some padding between lines
-        else:
-            # Just add some space for empty lines
-            rendered_lines.append((line, None, 20))
-            total_height += 20
+            
+            rendered_content.append((result, color, line_height))
+            total_height += line_height + line_spacing
     
     # Calculate maximum scroll value
-    max_scroll_y = max(0, total_height - scroll_area.height)
+    max_scroll_y = max(0, total_height - scroll_area.height + 40)  # Add some bottom padding
     
-    # Render the text with scrolling
+    # Render the content with scrolling
     current_y = scroll_area.top + 20 - instruction_scroll_y
     
-    for line, result, line_height in rendered_lines:
-        if line.strip():  # If not an empty line
-            for text_surface, text_rect in result:
-                # Only render if within the visible area
-                adjusted_rect = text_rect.copy()
-                adjusted_rect.y = current_y
-                if (adjusted_rect.bottom > scroll_area.top and 
-                    adjusted_rect.top < scroll_area.bottom):
-                    screen.blit(text_surface, adjusted_rect)
-            current_y += line_height + 10
+    for content, color, height in rendered_content:
+        if content is None:  # Empty line/spacing
+            current_y += height
         else:
-            # Just add space for empty lines
-            current_y += 20
+            # Render each line of text
+            for text_surface, text_rect in content:
+                adjusted_rect = text_rect.copy()
+                adjusted_rect.y = current_y + (text_rect.y - text_rect.y)  # Keep relative positioning
+                
+                # Only render if within the visible area (with some buffer)
+                if (adjusted_rect.bottom > scroll_area.top - 50 and 
+                    adjusted_rect.top < scroll_area.bottom + 50):
+                    screen.blit(text_surface, (adjusted_rect.x, current_y))
+                
+                current_y += text_surface.get_height()
+            
+            current_y += line_spacing
     
     # Reset the clipping rect
     screen.set_clip(None)
@@ -341,7 +354,7 @@ def instructions_screen():
         pygame.draw.rect(screen, (50, 50, 50), scroll_bar_bg, border_radius=5)
         
         # Draw scroll bar handle
-        scroll_ratio = instruction_scroll_y / max_scroll_y
+        scroll_ratio = instruction_scroll_y / max_scroll_y if max_scroll_y > 0 else 0
         handle_height = max(30, scroll_area.height * (scroll_area.height / total_height))
         handle_pos = scroll_area.top + (scroll_area.height - handle_height) * scroll_ratio
         scroll_handle = pygame.Rect(scroll_area.right + 10, handle_pos, 10, handle_height)
@@ -353,27 +366,6 @@ def instructions_screen():
         "scroll_down": scroll_down_rect,
         "scroll_area": scroll_area
     }
-
-def settings_screen():
-    screen.fill(BLACK)
-    update_particles()
-    back_rect = create_button("BACK", 20, 20, 100, 40)
-    draw_text("SETTINGS", menu_title_font, WHITE, 400, 80)
-
-    draw_text("Difficulty:", option_font, WHITE, 200, 200, "left")
-    create_button("EASY", 350, 180, 120, 40)
-    create_button("MEDIUM", 480, 180, 120, 40, ORANGE, LIGHT_ORANGE)
-    create_button("HARD", 610, 180, 120, 40)
-
-    draw_text("Sound:", option_font, WHITE, 200, 260, "left")
-    create_button("ON", 350, 240, 120, 40, ORANGE, LIGHT_ORANGE)
-    create_button("OFF", 480, 240, 120, 40)
-
-    draw_text("Fullscreen:", option_font, WHITE, 200, 320, "left")
-    create_button("ON", 350, 300, 120, 40)
-    create_button("OFF", 480, 300, 120, 40, ORANGE, LIGHT_ORANGE)
-
-    return {"back": back_rect}
 
 def launch_game(game_file):
     try:
@@ -434,8 +426,6 @@ def main():
             if mouse_click:
                 if elements["play"].collidepoint(mouse_click):
                     current_screen = "mode_selection"
-                elif elements["settings"].collidepoint(mouse_click):
-                    current_screen = "settings"
                 elif elements["instructions"].collidepoint(mouse_click):
                     current_screen = "instructions"
                     instruction_scroll_y = 0
@@ -484,10 +474,6 @@ def main():
                 elif pygame.Rect(elements["scroll_area"].right + 10, elements["scroll_area"].top, 10, elements["scroll_area"].height).collidepoint(mouse_click):
                     click_ratio = (mouse_click[1] - elements["scroll_area"].top) / elements["scroll_area"].height
                     instruction_scroll_y = min(max_scroll_y, max(0, int(max_scroll_y * click_ratio)))
-        elif current_screen == "settings":
-            elements = settings_screen()
-            if mouse_click and elements["back"].collidepoint(mouse_click):
-                current_screen = "home"
 
         pygame.display.flip()
         clock.tick(60)
